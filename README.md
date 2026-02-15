@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Mazahua Go!
 
-## Getting Started
 
-First, run the development server:
+Ola k aze
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Stack tecnológico
+Next.js            -> Framework de React para el frontend y optimización SEO.
+TypeScript         -> Lenguaje principal para asegurar un código tipado y sin errores.
+Supabase           -> "Backend-as-a-Service (PostgreSQL, Auth y Storage)."
+Vercel             -> Hosting y despliegue continuo (CI/CD).
+Tailwind CSS       -> Framework de estilos para un diseño responsivo y moderno.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+==========================================================================================
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Estructura Git
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Para mantener la integridad del código, seguimos una estructura de ramas estricta:
 
-## Learn More
+- main: Código productivo y 100% funcional. Es la rama que se visualiza en el host oficial.
+- testing: Rama de integración. Aquí unimos los cambios de todos para detectar bugs antes de pasar a producción.
+- feature/[nombre]: Ramas individuales (ej. feature/jon o feature/dam). Aquí se realizan las pruebas y el desarrollo de nuevas funcionalidades.
 
-To learn more about Next.js, take a look at the following resources:
+- Clona el repositorio: git clone [url-del-repo].
+- Crea tu rama desde testing: git checkout -b feature/tu-nombre.
+- Al terminar tus cambios, solicita un Pull Request hacia testing.
+- Una vez aprobado y probado en testing, el administrador realizará el merge a main.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Dinamica de commits
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Los mensajes de commit deben referenciar el requisito que satisfacen (ej. git commit -m "feat: implementar reproductor de audio (RF-05)").
 
-## Deploy on Vercel
+==========================================================================================
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Instalacion
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Asegúrate de tener Node.js instalado.
+
+En la carpeta raíz (mazahua_go) ejecuta los siguientes comandos:
+
+- npm install (dependencias)
+
+Configura tu archivo .env.local con las llaves de Supabase (solicítalas al Admin de DB)
+
+- npm run dev
+
+Definicion de roles
+
+Jon ->	Admin de Host/Despliegue, Admin de DB (PostgreSQL/Supabase), Lógica y Documentación.
+Dam	->  Diseño de Interfaces (UI/UX), Lógica, Especialista en Lengua y Documentación.
