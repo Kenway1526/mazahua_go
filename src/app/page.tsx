@@ -25,7 +25,7 @@ export default function WelcomePage() {
 
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             {/* Ajuste de ruta a /auth/login */}
-            <Link href="/auth/login" className="w-full">
+            <Link href="/login" className="w-full">
               <Button 
                 className="w-full h-12 text-lg font-semibold rounded-full bg-gradient-to-r from-[#D4641C] to-[#8B4513] hover:from-[#C4571A] hover:to-[#7A3D10] text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02]"
                 style={{ fontFamily: 'var(--font-fredoka)' }}
@@ -36,7 +36,7 @@ export default function WelcomePage() {
 
             {/* Ajuste de ruta a /auth/register */}
             <Link 
-              href="/auth/register" 
+              href="/register" 
               className="text-[#D4641C] hover:text-[#8B4513] font-semibold text-lg transition-colors underline-offset-4 hover:underline"
               style={{ fontFamily: 'var(--font-fredoka)' }}
             >

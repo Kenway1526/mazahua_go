@@ -1,19 +1,21 @@
-'use client'
-import { usePathname } from 'next/navigation'
-import Navbar from "./Navbar"
-import Footer from "./Footer"
+"use client";
+import { usePathname } from "next/navigation";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const hideLayout = pathname === '/' || pathname.startsWith('/auth')
+  const pathname = usePathname();
+
+  // Rutas donde NO queremos Navbar ni Footer
+  const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/";
 
   return (
     <>
-      {!hideLayout && <Navbar />}
-      <main className={!hideLayout ? "flex-grow max-w-7xl mx-auto w-full py-6 sm:px-6 lg:px-8" : "flex-grow"}>
+      {!isAuthPage && <Navbar />}
+      <main className={!isAuthPage ? "pt-20" : ""}> 
         {children}
       </main>
-      {!hideLayout && <Footer />}
+      {!isAuthPage && <Footer />}
     </>
-  )
+  );
 }
