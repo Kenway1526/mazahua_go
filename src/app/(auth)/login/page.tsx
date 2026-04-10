@@ -16,32 +16,40 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    console.log("1. Intentando iniciar sesión con:", email); // LOG DE CONTROL
+    setLoading(true);
 
     try {
-      // 1. Intento de inicio de sesión real en Supabase
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
-      if (authError) throw authError
+      if (authError) {
+        console.error("2. Error de Supabase:", authError.message); // LOG DE ERROR
+        setError(authError.message);
+        return;
+      }
 
       if (data.user) {
-        // 2. Si las credenciales son correctas, mandamos al Dashboard
-        router.push("/dashboard")
-        router.refresh() // Refresca para asegurar que el middleware detecte la sesión
+        console.log("3. Login exitoso");
+        
+        // 1. Refrescar los datos del router
+        router.refresh();
+        
+        // 2. Pequeña pausa para asegurar la cookie
+        setTimeout(() => {
+          console.log("4. Redirigiendo...");
+          window.location.href = "/dashboard";
+        }, 300); 
       }
-    } catch (err: any) {
-      // Manejo de errores (ej: usuario no encontrado o contraseña mal escrita)
-      setError("Credenciales incorrectas. Por favor, verifica tu correo y contraseña.")
-      console.error("Login error:", err.message)
+    } catch (err) {
+      console.error("5. Error inesperado:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4">

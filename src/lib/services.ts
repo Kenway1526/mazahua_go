@@ -35,52 +35,38 @@ export async function getContenidoLeccion(id: string) {
   return data;
 }
 
-export async function completarLeccion(userId: string, lessonId: string) {
+export const completarLeccion = async (userId: string, lessonId: string) => {
   try {
-    // 1. Guardar o actualizar el progreso en user_progress
-    // Usamos .upsert para que si ya la completó, solo actualice la fecha
+    // 1. Registrar el progreso de la lección
     const { error: progressError } = await supabase
       .from('user_progress')
       .upsert({ 
         user_id: userId, 
         lesson_id: lessonId, 
         completed: true,
-        completed_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,lesson_id' // Evita duplicados si terminas la misma lección dos veces
+        updated_at: new Date().toISOString()
       });
 
     if (progressError) throw progressError;
 
-    // 2. Obtener el XP actual del usuario para incrementarlo
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('xp')
-      .eq('id', userId)
-      .single();
+    // 2. Llamar a la función SQL de racha y sumar XP (ej: +10 XP)
+    // Usamos .rpc() para llamar a funciones personalizadas de Postgres
+    const { error: rpcError } = await supabase.rpc('actualizar_racha_usuario', {
+      user_id_param: userId
+    });
 
-    if (profileError) throw profileError;
+    if (rpcError) throw rpcError;
 
-    // 3. Sumar +15 XP por lección completada (puedes ajustar el valor)
-    const nuevoXp = (profile?.xp || 0) + 15;
+    // 3. Sumar XP al perfil
+    const { error: xpError } = await supabase
+      .rpc('incrementar_xp', { user_id_param: userId, cantidad: 10 });
 
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ 
-        xp: nuevoXp,
-        last_login: new Date().toISOString() // Aprovechamos para marcar actividad
-      })
-      .eq('id', userId);
-
-    if (updateError) throw updateError;
-
-    return { success: true, xpGanado: 15 };
-    
+    return { success: true };
   } catch (error) {
-    console.error("Error en completarLeccion:", error);
+    console.error("Error al guardar progreso:", error);
     throw error;
   }
-}
+};
 
 export async function getMapaConProgreso(userId: string) {
   const { data: niveles } = await supabase
