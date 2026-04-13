@@ -1,108 +1,106 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Lock, CheckCircle2, Star } from "lucide-react";
-import { getMapaConProgreso } from "../../lib/services";
+import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { Flashcard } from '@/components/ejercicios/flashcard'
+import { LessonSummary } from '@/components/ejercicios/lesson-summary' // Importamos el resumen
+import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
 
-// ID de prueba hasta que implementemos el Auth real
-const TEST_USER_ID = "tu-uuid-de-prueba-aqui"; 
-
-export default function MapaLecciones() {
-  const [niveles, setNiveles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function LessonPage({ params }: { params: { id: string } }) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const variant = searchParams.get('variant') || 'oriental'
+  
+  const [currentStep, setCurrentStep] = useState(0)
+  const [exercises, setExercises] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [score, setScore] = useState(0)
+  const [isFinished, setIsFinished] = useState(false) // Estado para el final
 
   useEffect(() => {
-    async function loadMapa() {
-      const data = await getMapaConProgreso(TEST_USER_ID);
-      setNiveles(data || []);
-      setLoading(false);
-    }
-    loadMapa();
-  }, []);
+    async function loadLesson() {
+      const { data } = await supabase
+        .from('vocabulary')
+        .select('*')
+        .or(`variant.eq.${variant},variant.eq.general`)
+        .limit(8)
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-[#D4641C] border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="font-bold text-gray-600">Cargando tu progreso...</p>
-        </div>
-      </div>
-    );
+      if (data) setExercises(data)
+      setLoading(false)
+    }
+    loadLesson()
+  }, [variant])
+
+  const handleAnswer = (known: boolean) => {
+    if (known) setScore(s => s + 1)
+    
+    if (currentStep < exercises.length - 1) {
+      setCurrentStep(s => s + 1)
+    } else {
+      setIsFinished(true) // ¡Llegamos al final!
+    }
   }
 
+  if (loading) return <div className="flex h-screen items-center justify-center font-black text-[#D4641C] animate-pulse text-2xl">Cargando Jñatjo...</div>
+
+  // Si terminó, mostramos el resumen con el confeti
+  if (isFinished) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4">
+        <LessonSummary 
+          score={score} 
+          total={exercises.length} 
+          xpEarned={score * 10} 
+          onRestart={() => window.location.reload()} 
+          currentLessonId={params.id}
+        />
+      </div>
+    )
+  }
+
+  const progress = ((currentStep) / exercises.length) * 100
+
   return (
-    <div className="min-h-screen bg-[#FAF8F5] p-6 pb-24">
-      <div className="max-w-4xl mx-auto space-y-16">
+    <div className="min-h-screen bg-[#FAF8F5] p-6 flex flex-col items-center font-nunito">
+      {/* Barra de Progreso */}
+      <div className="w-full max-w-2xl flex items-center gap-4 mb-8">
+        <button onClick={() => router.push('/dashboard')} className="text-gray-400 hover:text-gray-600 font-black text-2xl">✕</button>
+        <Progress value={progress} className="h-4" />
+        <span className="font-black text-gray-400 tabular-nums">{currentStep + 1}/{exercises.length}</span>
+      </div>
+
+      <div className="flex-1 w-full max-w-2xl flex flex-col items-center justify-center gap-6">
+        {/* INSTRUCCIONES DINÁMICAS */}
+        <div className="text-center space-y-2 mb-4">
+          <h2 className="text-3xl font-black text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
+            Estudia esta palabra
+          </h2>
+          <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">Toca la carta para ver la traducción</p>
+        </div>
         
-        <header className="text-center space-y-2 pt-4">
-          <h1 className="text-4xl font-bold text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
-            Mi Camino Mazahua
-          </h1>
-          <p className="text-gray-500 font-medium">Completa lecciones para desbloquear nuevos niveles</p>
-        </header>
+        <Flashcard 
+          word_mazahua={exercises[currentStep].word_mazahua}
+          word_spanish={exercises[currentStep].word_spanish}
+          emoji={exercises[currentStep].emoji || "✨"}
+        />
 
-        {niveles.map((nivel, idx) => (
-          <section key={nivel.id} className="relative">
-            {/* Cabecera del Nivel */}
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-14 h-14 rounded-2xl bg-[#D4641C] shadow-[0_4px_0_0_#8B4513] flex items-center justify-center text-white text-2xl">
-                {idx === 0 ? "🌱" : idx === 1 ? "🌿" : "🌳"}
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
-                  Nivel {nivel.orden}: {nivel.nombre}
-                </h2>
-              </div>
-            </div>
-
-            {/* Grid de Lecciones estilo Duolingo */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-              {nivel.lessons?.sort((a: any, b: any) => a.orden - b.orden).map((leccion: any) => {
-                const isCompletada = leccion.estado === 'completada';
-                // Por ahora permitimos entrar a todas las que no estén completadas como 'disponibles'
-                const isBloqueada = false; 
-
-                return (
-                  <Link 
-                    key={leccion.id}
-                    href={isBloqueada ? "#" : `/lecciones/${leccion.id}`}
-                    className={`group relative flex flex-col items-center transition-all ${isBloqueada ? 'cursor-not-allowed' : 'hover:scale-105'}`}
-                  >
-                    {/* Botón Circular de Lección */}
-                    <div className={`
-                      w-28 h-28 rounded-[2.5rem] flex items-center justify-center text-3xl shadow-lg border-b-8 transition-all
-                      ${isCompletada ? 'bg-yellow-400 border-yellow-600 text-white' : 'bg-white border-gray-200 text-gray-400'}
-                      ${isBloqueada ? 'bg-gray-100 border-gray-300 opacity-50' : ''}
-                    `}>
-                      {isCompletada ? <Star className="w-10 h-10 fill-white" /> : <span className="grayscale opacity-50">📖</span>}
-                      
-                      {/* Badge de Estado */}
-                      <div className="absolute -top-2 -right-2">
-                        {isCompletada && (
-                          <div className="bg-green-500 rounded-full p-1 border-4 border-[#FAF8F5]">
-                            <CheckCircle2 className="w-5 h-5 text-white" />
-                          </div>
-                        )}
-                        {isBloqueada && (
-                          <div className="bg-gray-400 rounded-full p-1 border-4 border-[#FAF8F5]">
-                            <Lock className="w-5 h-5 text-white" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <span className={`mt-3 font-bold text-lg ${isCompletada ? 'text-gray-800' : 'text-gray-500'}`}>
-                      {leccion.titulo}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-8">
+          <Button 
+            className="py-10 rounded-3xl text-xl font-black bg-white text-gray-700 border-b-8 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all active:translate-y-1 active:border-b-0"
+            onClick={() => handleAnswer(false)}
+          >
+            Aún no la sé
+          </Button>
+          <Button 
+            className="py-10 rounded-3xl text-xl font-black bg-white text-gray-700 border-b-8 border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all active:translate-y-1 active:border-b-0"
+            onClick={() => handleAnswer(true)}
+          >
+            ¡La conozco!
+          </Button>
+        </div>
       </div>
     </div>
-  );
+  )
 }

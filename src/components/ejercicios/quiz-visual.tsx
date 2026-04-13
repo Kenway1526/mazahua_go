@@ -1,121 +1,44 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button"
+import { motion } from "framer-motion"
 
-interface QuizProps {
-  preguntas: any[];
-  onFinish: (score: number) => void;
+interface QuizVisualProps {
+  pregunta: string;
+  opciones: string[];
+  respuestaCorrecta: string;
+  onAnswer: (isCorrect: boolean) => void;
 }
 
-export function QuizVisual({ preguntas, onFinish }: QuizProps) {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [score, setScore] = useState(0);
-
-  const currentPrendunta = preguntas[currentIdx];
-
-  const handleCheck = () => {
-    const correct = selected === currentPrendunta.correcta;
-    setIsCorrect(correct);
-    if (correct) setScore(score + 1);
-  };
-
-  const handleNext = () => {
-    if (currentIdx + 1 < preguntas.length) {
-      setCurrentIdx(currentIdx + 1);
-      setSelected(null);
-      setIsCorrect(null);
-    } else {
-      onFinish(score + (isCorrect ? 1 : 0));
-    }
-  };
-
+export function QuizVisual({ pregunta, opciones, respuestaCorrecta, onAnswer }: QuizVisualProps) {
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-8">
-      {/* Barra de Progreso */}
-      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-        <motion.div 
-          className="h-full bg-orange-500"
-          initial={{ width: 0 }}
-          animate={{ width: `${((currentIdx + 1) / preguntas.length) * 100}%` }}
-        />
+    <div className="w-full max-w-2xl space-y-8 animate-in fade-in zoom-in duration-500">
+      <div className="text-center space-y-4">
+        <h3 className="text-gray-400 font-black uppercase tracking-widest text-sm">¿Cómo se dice en Jñatjo?</h3>
+        <h2 className="text-5xl font-black text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
+          {pregunta}
+        </h2>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div 
-          key={currentIdx}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="space-y-6 text-center"
-        >
-          <h2 className="text-2xl font-bold text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
-            {currentPrendunta.pregunta}
-          </h2>
-
-          {/* Imagen de la pregunta */}
-          <div className="bg-white p-6 rounded-[3rem] shadow-sm inline-block">
-            <img 
-              src={currentPrendunta.imagen} 
-              alt="Imagen de referencia" 
-              className="w-48 h-48 object-contain" 
-            />
-          </div>
-
-          {/* Opciones */}
-          <div className="grid grid-cols-1 gap-4">
-            {currentPrendunta.opciones.map((opcion: string) => (
-              <button
-                key={opcion}
-                disabled={isCorrect !== null}
-                onClick={() => setSelected(opcion)}
-                className={`
-                  p-5 rounded-2xl text-xl font-bold border-2 transition-all
-                  ${selected === opcion ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}
-                  ${isCorrect !== null && opcion === currentPrendunta.correcta ? 'border-green-500 bg-green-50 text-green-700' : ''}
-                  ${isCorrect === false && selected === opcion ? 'border-red-500 bg-red-50 text-red-700' : ''}
-                `}
-              >
-                {opcion}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Footer de Validación */}
-      <div className={`fixed bottom-0 left-0 w-full p-6 border-t-2 transition-colors ${
-        isCorrect === true ? 'bg-green-100 border-green-200' : 
-        isCorrect === false ? 'bg-red-100 border-red-200' : 'bg-white border-gray-100'
-      }`}>
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isCorrect === true && <><CheckCircle2 className="text-green-600 w-8 h-8" /> <span className="text-green-800 font-bold text-xl">¡Excelente!</span></>}
-            {isCorrect === false && <><XCircle className="text-red-600 w-8 h-8" /> <span className="text-red-800 font-bold text-xl">Respuesta correcta: {currentPrendunta.correcta}</span></>}
-          </div>
-
-          {isCorrect === null ? (
-            <Button 
-              disabled={!selected}
-              onClick={handleCheck}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-10 h-14 rounded-2xl font-bold text-lg shadow-[0_4px_0_0_#8B4513]"
+      <div className="grid grid-cols-1 gap-4">
+        {opciones.map((opcion, index) => (
+          <motion.div
+            key={index}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Button
+              onClick={() => onAnswer(opcion === respuestaCorrecta)}
+              className="w-full py-8 rounded-[2rem] text-xl font-bold bg-white text-gray-700 border-2 border-gray-100 hover:border-orange-400 hover:bg-orange-50 transition-all shadow-sm"
             >
-              Comprobar
+              <span className="bg-orange-100 text-[#D4641C] w-8 h-8 rounded-full flex items-center justify-center mr-4 text-sm">
+                {index + 1}
+              </span>
+              {opcion}
             </Button>
-          ) : (
-            <Button 
-              onClick={handleNext}
-              className={`${isCorrect ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white px-10 h-14 rounded-2xl font-bold text-lg shadow-lg`}
-            >
-              Siguiente
-            </Button>
-          )}
-        </div>
+          </motion.div>
+        ))}
       </div>
     </div>
-  );
+  )
 }

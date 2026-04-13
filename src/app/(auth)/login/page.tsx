@@ -7,6 +7,7 @@ import { User, Lock, Loader2, AlertCircle } from "lucide-react"
 import { BrandSection } from "@/components/mazahua/brand-section"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter()

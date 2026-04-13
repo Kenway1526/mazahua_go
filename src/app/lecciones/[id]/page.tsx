@@ -1,144 +1,236 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase"; 
-import { getContenidoLeccion, completarLeccion } from "@/lib/services";
-import { QuizVisual } from "@/components/ejercicios/quiz-visual";
-import { MemoryGame } from "@/components/ejercicios/memory-game";
-import { Loader2 } from "lucide-react";
+import React, { useState, useEffect, use } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { Flashcard } from '@/components/ejercicios/flashcard'
+import { LessonSummary } from '@/components/ejercicios/lesson-summary'
+import { HeartsDisplay } from '@/components/ejercicios/hearts-display'
+import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
+import { Loader2, X, AlertTriangle, RefreshCcw, Home } from "lucide-react"
+import { motion } from "framer-motion"
 
-export default function JuegoPage() {
-  const { id } = useParams();
-  const router = useRouter();
+export default function LessonPage({ params }: { params: Promise<{ id: string }> }) {
+  // 1. Manejo de Parámetros asíncronos (Next.js 16)
+  const resolvedParams = use(params);
+  const lessonId = resolvedParams.id;
+
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const variant = searchParams.get('variant') || 'oriental'
   
-  // Estados de Datos
-  const [leccion, setLeccion] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-  
-  // Estados de Flujo
-  const [loading, setLoading] = useState(true);
-  const [enviandoProgreso, setEnviandoProgreso] = useState(false);
-  const [terminado, setTerminado] = useState(false);
+  // 2. Estados del Motor
+  const [exercises, setExercises] = useState<any[]>([])
+  const [currentStep, setCurrentStep] = useState(0)
+  const [score, setScore] = useState(0)
+  const [lives, setLives] = useState(5)
+  const [loading, setLoading] = useState(true)
+  const [isFinished, setIsFinished] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [gameOver, setGameOver] = useState(false)
 
-  // 1. Obtener Sesión Real y Datos de Lección
+  // 3. Carga de datos
   useEffect(() => {
-    async function inicializarJuego() {
+    async function loadLesson() {
+      setLoading(true)
       try {
-        // Obtener usuario actual
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          // Si no hay sesión, podrías redirigir o avisar
-          console.warn("Usuario no autenticado. El progreso no se guardará.");
-        } else {
-          setUser(session.user);
-        }
+        const { data, error } = await supabase
+          .from('vocabulary')
+          .select('*')
+          .eq('lesson_id', lessonId)
+          .or(`variant.eq.${variant},variant.eq.general`)
+          .limit(8)
 
-        // Obtener contenido de la lección
-        if (id) {
-          const data = await getContenidoLeccion(id as string);
-          setLeccion(data);
+        if (error) throw error
+        
+        if (data && data.length > 0) {
+          setExercises(data)
+        } else {
+          // Si no hay datos, evitamos el error redirigiendo o lanzando alerta
+          console.warn("No se encontraron palabras para esta lección.");
+          router.push('/lecciones');
         }
-      } catch (error) {
-        console.error("Error al inicializar:", error);
+      } catch (err) {
+        console.error("Error crítico de carga:", err)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
+    loadLesson()
+  }, [variant, lessonId, router])
 
-    inicializarJuego();
-  }, [id]);
-
-  // 2. Manejador de Finalización (Lógica de Guardado Real)
-  const handleFinish = async (score: number) => {
-    if (enviandoProgreso) return;
-
-    if (!user) {
-      setTerminado(true); // Permitimos ver pantalla de éxito aunque no guarde
-      return;
-    }
-
-    try {
-      setEnviandoProgreso(true);
-      // Guardar en Supabase usando el ID real del usuario logueado
-      await completarLeccion(user.id, id as string);
-      setTerminado(true);
-    } catch (error) {
-      console.error("Error al persistir progreso:", error);
-      setTerminado(true);
-    } finally {
-      setEnviandoProgreso(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF8F5]">
-        <Loader2 className="w-10 h-10 animate-spin text-[#D4641C] mb-4" />
-        <p className="font-bold text-gray-500">Preparando tu lección...</p>
-      </div>
-    );
-  }
-
-  if (!leccion) return <div className="p-20 text-center">Lección no encontrada.</div>;
-
-  if (terminado) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="bg-white p-10 rounded-[3rem] shadow-xl border-b-8 border-gray-100 max-w-sm w-full">
-          <span className="text-7xl mb-4 block">🥳</span>
-          <h1 className="text-4xl font-bold text-[#D4641C]" style={{ fontFamily: 'var(--font-fredoka)' }}>
-            ¡Buen trabajo!
-          </h1>
-          <p className="text-gray-600 mt-2 font-medium">
-            Has dominado <span className="text-gray-900 font-bold">{leccion.titulo}</span>
-          </p>
-          <div className="mt-6 pt-6 border-t border-gray-100">
-             <p className="text-[#D4641C] font-bold">+15 XP ganados</p>
-          </div>
-        </div>
+  // 4. Lógica de Respuesta
+  const handleAnswer = (known: boolean) => {
+    if (!known) {
+      // Usamos una función de actualización para asegurar que tenemos el valor real
+      setLives((prevLives) => {
+        const newLives = prevLives - 1;
         
-        <button 
-          onClick={() => router.push('/lecciones')}
-          className="bg-[#D4641C] text-white px-12 py-4 rounded-full font-bold shadow-[0_4px_0_0_#8B4513] hover:translate-y-[1px] hover:shadow-[0_2px_0_0_#8B4513] transition-all"
-        >
-          Continuar
-        </button>
+        if (newLives <= 0) {
+          setGameOver(true);
+          return 0;
+        }
+        
+        // Solo si le quedan vidas, avanzamos a la siguiente palabra
+        avanzarSiguiente();
+        return newLives;
+      });
+    } else {
+      setScore(s => s + 1);
+      avanzarSiguiente();
+    }
+  }
+
+  const avanzarSiguiente = () => {
+    if (currentStep < exercises.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    } else {
+      // Terminó con éxito
+      saveProgressToSupabase(score);
+    }
+  }
+
+  // 5. Persistencia
+  const saveProgressToSupabase = async (finalScore: number) => {
+    setIsSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('user_progress').insert([{ 
+          user_id: user.id, 
+          lesson_id: lessonId, 
+          completed: true,
+          completed_at: new Date().toISOString()
+        }])
+      }
+    } catch (err) {
+      console.error("Error al guardar progreso:", err)
+    } finally {
+      setIsSaving(false);
+      setIsFinished(true);
+    }
+  }
+
+  // --- RENDERIZADO CONDICIONAL (ORDEN IMPORTANTE) ---
+
+  // A. Cargando
+  if (loading) return (
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center gap-4">
+      <Loader2 className="w-12 h-12 text-[#D4641C] animate-spin" />
+      <p className="font-black text-gray-400 uppercase tracking-widest text-sm">Cargando...</p>
+    </div>
+  )
+
+  // B. Game Over
+  if (gameOver) return (
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center p-6 text-center space-y-8">
+      <div className="bg-red-100 p-8 rounded-full">
+        <AlertTriangle className="w-16 h-16 text-red-500" />
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-4xl font-black text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>¡Sin vidas!</h2>
+        <p className="text-gray-500 font-bold max-w-xs mx-auto text-sm uppercase tracking-tighter">Vuelve a intentarlo para dominar estas palabras.</p>
+      </div>
+      <div className="flex flex-col w-full max-w-xs gap-3">
+        <Button onClick={() => window.location.reload()} className="py-8 rounded-2xl bg-[#D4641C] text-white font-black text-lg shadow-[0_6px_0_0_#8B4513] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 uppercase">
+          <RefreshCcw size={20} /> Reintentar
+        </Button>
+        <Button variant="ghost" onClick={() => router.push('/dashboard')} className="font-black text-gray-400 uppercase text-xs flex items-center justify-center gap-2">
+          <Home size={16} /> Salir
+        </Button>
+      </div>
+    </div>
+  )
+
+  // C. Éxito (Resumen)
+  if (isFinished) return (
+    <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4">
+      <LessonSummary 
+        score={score} 
+        total={exercises.length} 
+        xpEarned={score * 10} 
+        onRestart={() => window.location.reload()} 
+        currentLessonId={lessonId}
+      />
+    </div>
+  )
+
+  // D. Validación de Seguridad (Evita el error de "undefined")
+  if (!exercises[currentStep]) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#D4641C] animate-spin" />
       </div>
     );
   }
+
+  // --- RENDERIZADO PRINCIPAL ---
+  const progress = (currentStep / exercises.length) * 100
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Botón de Salida */}
-      <button 
-        onClick={() => router.back()}
-        className="absolute top-6 left-6 z-10 p-2 text-gray-400 hover:text-gray-700 transition-colors"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-
-      {/* Renderizado Condicional de Juegos */}
-      <main className="pt-16 px-4">
-        {leccion.tipo_juego === 'quiz' && (
-          <QuizVisual 
-            preguntas={leccion.contenido_json.preguntas} 
-            onFinish={handleFinish} 
-          />
-        )}
+    <div className="min-h-screen bg-[#FAF8F5] p-6 flex flex-col items-center font-nunito relative">
       
-        {leccion.tipo_juego === 'memory' && (
-          <div className="max-w-4xl mx-auto space-y-10 py-10">
-            <h2 className="text-3xl font-bold text-center text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
-              Encuentra los pares
-            </h2>
-            <MemoryGame data={leccion.contenido_json} onFinish={() => handleFinish(100)} />
-          </div>
-        )}
-      </main>
+      {/* HEADER */}
+      <div className="w-full max-w-2xl flex items-center justify-between gap-6 mb-10">
+        <button onClick={() => router.push('/lecciones')} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors">
+          <X size={28} strokeWidth={3} />
+        </button>
+        <div className="flex-1">
+          <Progress value={progress} className="h-4 border-2 border-white shadow-sm" />
+        </div>
+        <HeartsDisplay lives={lives} />
+      </div>
+
+      {/* CONTENIDO CENTRAL */}
+      <div className="flex-1 w-full max-w-2xl flex flex-col items-center justify-center gap-8">
+        
+        <motion.div 
+          key={currentStep}
+          initial={{ x: 20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          className="text-center space-y-2"
+        >
+          <h2 className="text-3xl font-black text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
+            Estudia la palabra
+          </h2>
+          <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em]">
+            Variante: {variant}
+          </p>
+        </motion.div>
+        
+        <Flashcard 
+          key={`card-${exercises[currentStep].id}`}
+          word_mazahua={exercises[currentStep].word_mazahua}
+          word_spanish={exercises[currentStep].word_spanish}
+          emoji={exercises[currentStep].emoji}
+        />
+
+        {/* BOTONES */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-4">
+          <Button 
+            variant="outline"
+            className="py-10 rounded-[2rem] text-xl font-black text-gray-500 border-2 border-gray-100 bg-white hover:border-red-200 transition-all"
+            onClick={() => handleAnswer(false)}
+          >
+            Aún no la sé
+          </Button>
+          <Button 
+            className="py-10 rounded-[2rem] text-xl font-black bg-white text-gray-700 border-2 border-gray-100 border-b-8 hover:border-green-400 hover:bg-green-50 transition-all active:translate-y-1 active:border-b-2 shadow-sm"
+            onClick={() => handleAnswer(true)}
+          >
+            ¡La conozco!
+          </Button>
+        </div>
+      </div>
+
+      {/* OVERLAY DE GUARDADO */}
+      {isSaving && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+          <Loader2 className="w-10 h-10 text-[#D4641C] animate-spin mb-2" />
+          <p className="font-black text-orange-800 uppercase text-[10px] tracking-widest">Guardando progreso...</p>
+        </div>
+      )}
     </div>
-  );
+  )
 }

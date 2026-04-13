@@ -18,7 +18,7 @@ export function Mascot({ size = "md" }: MascotProps) {
   return (
     <div className={`${config.className} relative`}>
       <Image
-        src="/images/deer-mascot.jpg"
+        src="/images/venado.png"
         alt="Venado mascota de MazahuaGo"
         width={config.width}
         height={config.height}
