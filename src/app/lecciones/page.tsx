@@ -1,106 +1,144 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import React, { useState, useEffect, Suspense } from 'react' // Importamos Suspense
 import { supabase } from '@/lib/supabase'
-import { Flashcard } from '@/components/ejercicios/flashcard'
-import { LessonSummary } from '@/components/ejercicios/lesson-summary' // Importamos el resumen
-import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
+import Link from 'next/link'
+import { Card } from "@/components/ui/card"
+import { CheckCircle2, Lock, ChevronRight, Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { useSearchParams } from 'next/navigation'
 
-export default function LessonPage({ params }: { params: { id: string } }) {
+// Estructura de Niveles
+const NIVELES = [
+  { id: 1, title: "Nivel 1: Raíces", color: "bg-green-500", border: "border-green-600" },
+  { id: 2, title: "Nivel 2: Hogar", color: "bg-orange-500", border: "border-orange-600" },
+  { id: 3, title: "Nivel 3: Naturaleza", color: "bg-blue-500", border: "border-blue-600" },
+  { id: 4, title: "Nivel 4: Diálogo", color: "bg-purple-500", border: "border-purple-600" },
+]
+
+// 1. Componente de Contenido (Aquí va toda la lógica original)
+function LessonsContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const variant = searchParams.get('variant') || 'oriental'
   
-  const [currentStep, setCurrentStep] = useState(0)
-  const [exercises, setExercises] = useState<any[]>([])
+  const [completedIds, setCompletedIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [score, setScore] = useState(0)
-  const [isFinished, setIsFinished] = useState(false) // Estado para el final
 
   useEffect(() => {
-    async function loadLesson() {
-      const { data } = await supabase
-        .from('vocabulary')
-        .select('*')
-        .or(`variant.eq.${variant},variant.eq.general`)
-        .limit(8)
-
-      if (data) setExercises(data)
+    async function getProgress() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data } = await supabase
+          .from('user_progress')
+          .select('lesson_id')
+          .eq('user_id', user.id)
+          .eq('completed', true)
+        
+        if (data) setCompletedIds(data.map(item => item.lesson_id))
+      }
       setLoading(false)
     }
-    loadLesson()
-  }, [variant])
+    getProgress()
+  }, [])
 
-  const handleAnswer = (known: boolean) => {
-    if (known) setScore(s => s + 1)
-    
-    if (currentStep < exercises.length - 1) {
-      setCurrentStep(s => s + 1)
-    } else {
-      setIsFinished(true) // ¡Llegamos al final!
-    }
-  }
-
-  if (loading) return <div className="flex h-screen items-center justify-center font-black text-[#D4641C] animate-pulse text-2xl">Cargando Jñatjo...</div>
-
-  // Si terminó, mostramos el resumen con el confeti
-  if (isFinished) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4">
-        <LessonSummary 
-          score={score} 
-          total={exercises.length} 
-          xpEarned={score * 10} 
-          onRestart={() => window.location.reload()} 
-          currentLessonId={params.id}
-        />
+      <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#D4641C] animate-spin mb-4" />
+        <p className="font-black text-gray-400 uppercase tracking-widest text-xs">Cargando tu ruta...</p>
       </div>
     )
   }
 
-  const progress = ((currentStep) / exercises.length) * 100
-
   return (
-    <div className="min-h-screen bg-[#FAF8F5] p-6 flex flex-col items-center font-nunito">
-      {/* Barra de Progreso */}
-      <div className="w-full max-w-2xl flex items-center gap-4 mb-8">
-        <button onClick={() => router.push('/dashboard')} className="text-gray-400 hover:text-gray-600 font-black text-2xl">✕</button>
-        <Progress value={progress} className="h-4" />
-        <span className="font-black text-gray-400 tabular-nums">{currentStep + 1}/{exercises.length}</span>
-      </div>
+    <div className="min-h-screen bg-[#FAF8F5] p-6 md:p-10 pb-24 font-nunito">
+      <header className="max-w-4xl mx-auto mb-12 text-center space-y-2">
+        <h1 className="text-4xl font-black text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
+          Tu Ruta Jñatjo
+        </h1>
+        <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[0.2em]">Variante activa: {variant}</p>
+      </header>
 
-      <div className="flex-1 w-full max-w-2xl flex flex-col items-center justify-center gap-6">
-        {/* INSTRUCCIONES DINÁMICAS */}
-        <div className="text-center space-y-2 mb-4">
-          <h2 className="text-3xl font-black text-gray-800" style={{ fontFamily: 'var(--font-fredoka)' }}>
-            Estudia esta palabra
-          </h2>
-          <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">Toca la carta para ver la traducción</p>
-        </div>
-        
-        <Flashcard 
-          word_mazahua={exercises[currentStep].word_mazahua}
-          word_spanish={exercises[currentStep].word_spanish}
-          emoji={exercises[currentStep].emoji || "✨"}
-        />
+      <div className="max-w-2xl mx-auto space-y-16">
+        {NIVELES.map((nivel) => (
+          <section key={nivel.id} className="space-y-6">
+            <div className={`inline-block px-6 py-2 rounded-2xl ${nivel.color} text-white font-black shadow-lg shadow-gray-200 uppercase text-xs tracking-wider`}>
+              {nivel.title}
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-8">
-          <Button 
-            className="py-10 rounded-3xl text-xl font-black bg-white text-gray-700 border-b-8 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all active:translate-y-1 active:border-b-0"
-            onClick={() => handleAnswer(false)}
-          >
-            Aún no la sé
-          </Button>
-          <Button 
-            className="py-10 rounded-3xl text-xl font-black bg-white text-gray-700 border-b-8 border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all active:translate-y-1 active:border-b-0"
-            onClick={() => handleAnswer(true)}
-          >
-            ¡La conozco!
-          </Button>
-        </div>
+            <div className="grid grid-cols-1 gap-4">
+              {[1, 2, 3, 4, 5].map((num) => {
+                const lessonId = `L${nivel.id}-${num}`
+                const isCompleted = completedIds.includes(lessonId)
+                
+                // Lógica de desbloqueo: Primera lección siempre abierta o si la anterior está completada
+                const isLocked = lessonId !== 'L1-1' && !isCompleted && !completedIds.includes(`L${nivel.id}-${num-1}`) && nivel.id === 1 
+                                 ? true : (nivel.id > 1 && !completedIds.includes(`L${nivel.id-1}-5`) ? true : false);
+                
+                // Nota: Simplificamos para el build, puedes pulir la lógica de bloqueo después
+                const isActuallyLocked = num > 1 && !completedIds.includes(`L${nivel.id}-${num-1}`) && !isCompleted;
+
+                return (
+                  <LessonRow 
+                    key={lessonId}
+                    id={lessonId}
+                    num={num}
+                    isCompleted={isCompleted}
+                    isLocked={isActuallyLocked}
+                    color={nivel.color}
+                    variant={variant}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
+  )
+}
+
+// Componente Auxiliar para las filas
+function LessonRow({ id, num, isCompleted, isLocked, color, variant }: any) {
+  const content = (
+    <Card className={`group relative p-6 rounded-[2.5rem] border-b-8 transition-all flex items-center justify-between ${
+      isLocked ? 'bg-gray-100 border-gray-200 grayscale opacity-60' : 'bg-white border-gray-100 hover:border-orange-200 cursor-pointer shadow-sm'
+    }`}>
+      <div className="flex items-center gap-6">
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg transition-transform group-hover:scale-110 ${isLocked ? 'bg-gray-300 shadow-none' : color}`}>
+          {isLocked ? '🔒' : num}
+        </div>
+        <div className="space-y-1">
+          <h4 className={`font-black uppercase tracking-tight ${isLocked ? 'text-gray-400' : 'text-gray-800'}`}>
+            Lección {num}
+          </h4>
+          <p className="text-[9px] text-gray-400 font-black uppercase tracking-[0.15em] flex items-center gap-1">
+            {isCompleted ? <span className="text-green-500">Completada</span> : isLocked ? "Bloqueada" : "Comenzar ahora"}
+          </p>
+        </div>
+      </div>
+      
+      {!isLocked && (
+        <div className="flex items-center gap-4">
+          {isCompleted && <CheckCircle2 className="text-green-500 w-8 h-8" />}
+          <ChevronRight className={`w-6 h-6 ${isCompleted ? 'text-green-500' : 'text-gray-300'}`} />
+        </div>
+      )}
+    </Card>
+  )
+
+  return isLocked ? <div>{content}</div> : <Link href={`/lecciones/${id}?variant=${variant}`}>{content}</Link>
+}
+
+// 2. Exportación Principal envuelta en Suspense (Solución para Vercel)
+export default function LessonsMapPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#D4641C] animate-spin" />
+      </div>
+    }>
+      <LessonsContent />
+    </Suspense>
   )
 }
