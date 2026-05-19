@@ -24,7 +24,6 @@ export default function RegisterPage() {
     setError(null)
 
     try {
-      // 1. Registro en Supabase Auth
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -38,9 +37,6 @@ export default function RegisterPage() {
       if (authError) throw authError
 
       if (data.user) {
-        // 2. Crear el perfil en la tabla 'profiles'
-        // Nota: Si configuraste un Trigger en Supabase, esto puede ser redundante,
-        // pero lo hacemos manual para asegurar la escritura de datos iniciales.
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([
@@ -54,7 +50,6 @@ export default function RegisterPage() {
 
         if (profileError) console.error("Error creando perfil:", profileError.message)
         
-        // Redirigir al Dashboard tras éxito
         router.push("/dashboard")
       }
     } catch (err: any) {

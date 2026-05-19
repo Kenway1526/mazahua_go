@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("1. Intentando iniciar sesión con:", email); // LOG DE CONTROL
+    console.log("1. Intentando iniciar sesión con:", email);
     setLoading(true);
 
     try {
@@ -28,18 +28,14 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        console.error("2. Error de Supabase:", authError.message); // LOG DE ERROR
+        console.error("2. Error de Supabase:", authError.message);
         setError(authError.message);
         return;
       }
 
       if (data.user) {
         console.log("3. Login exitoso");
-        
-        // 1. Refrescar los datos del router
         router.refresh();
-        
-        // 2. Pequeña pausa para asegurar la cookie
         setTimeout(() => {
           console.log("4. Redirigiendo...");
           window.location.href = "/dashboard";

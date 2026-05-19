@@ -26,13 +26,11 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Usamos getSession en lugar de getUser solo para esta prueba de flujo
   const { data: { session } } = await supabase.auth.getSession()
 
   const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
   const isLecciones = request.nextUrl.pathname.startsWith('/lecciones')
 
-  // Si intenta entrar a ruta protegida y NO hay sesión -> Login
   if (!session && (isDashboard || isLecciones)) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
