@@ -24,32 +24,23 @@ export default function RegisterPage() {
     setError(null)
 
     try {
+      // 🚀 1. REGISTRO EN AUTH: Enviamos los metadatos necesarios al Trigger de Postgres
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
-            full_name: formData.nombre,
+            full_name: formData.nombre, // Capturado por el Trigger para la columna 'username'
+            variant: 'general',       // Capturado por el Trigger para la columna 'variant'
           },
         },
       })
 
       if (authError) throw authError
 
+      // 🛡️ 2. CONTROL SÍNCRONO: Redirección inmediata
+      // El Trigger en el servidor ya creó de manera atómica las filas en 'profiles' y 'user_progress'
       if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            { 
-              id: data.user.id, 
-              username: formData.nombre,
-              xp: 0,
-              streak: 0 
-            }
-          ])
-
-        if (profileError) console.error("Error creando perfil:", profileError.message)
-        
         router.push("/dashboard")
       }
     } catch (err: any) {
@@ -68,7 +59,10 @@ export default function RegisterPage() {
         </div>
 
         <div className="w-full flex flex-col items-center gap-6">
-          <h2 className="text-3xl font-bold text-[#D4641C] text-center" style={{ fontFamily: 'var(--font-fredoka)' }}>
+          <h2 
+            className="text-3xl font-bold text-[#D4641C] text-center" 
+            style={{ fontFamily: 'var(--font-fredoka)' }}
+          >
             Crear mi cuenta
           </h2>
 
@@ -79,7 +73,7 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="w-full space-y-3">
-            {/* Nombre */}
+            {/* Input: Nombre completo */}
             <div className="relative group">
               <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#D4641C]">
                 <User className="w-5 h-5" />
@@ -95,7 +89,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Email */}
+            {/* Input: Correo electrónico */}
             <div className="relative group">
               <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#D4641C]">
                 <Mail className="w-5 h-5" />
@@ -111,7 +105,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Contraseña */}
+            {/* Input: Contraseña */}
             <div className="relative group">
               <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#D4641C]">
                 <Lock className="w-5 h-5" />
@@ -127,11 +121,12 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Botón de Envío */}
             <div className="pt-2">
               <Button 
                 type="submit"
                 disabled={loading}
-                className="w-full h-14 text-xl font-bold rounded-full bg-[#D4641C] hover:bg-[#B45415] text-white shadow-[0_4px_0_0_#8B4513] active:shadow-none active:translate-y-[2px] transition-all flex items-center justify-center gap-2"
+                className="w-full h-14 text-xl font-bold rounded-full bg-[#D4641C] hover:bg-[#B45415] text-white shadow-[0_4px_0_0_#8B4513] active:shadow-none active:translate-y-[2px] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 style={{ fontFamily: 'var(--font-fredoka)' }}
               >
                 {loading ? <Loader2 className="animate-spin" /> : "Registrarme"}
